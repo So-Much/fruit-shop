@@ -34,8 +34,11 @@ export function formatCurrency(amount: number): string {
 }
 
 /**
- * Delay execution for specified milliseconds
+ * Format grams to kg display
  */
-export function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+export function formatGrams(grams: number): string {
+  if (grams >= 1000) {
+    return `${(grams / 1000).toFixed(2)} kg`;
+  }
+  return `${grams} g`;
 }

@@ -1,65 +1,70 @@
-import { Metadata } from 'next';
-import Link from 'next/link';
-import { createMetadata } from '@/lib/metadata';
-import StructuredData from '@/components/seo/structured-data';
+'use client';
 
-export const metadata: Metadata = createMetadata({
-  title: 'Order Fresh Fruits Online - Shop Now',
-  description:
-    'Browse and order fresh fruits online. Local fruits, imported selections, family combos, and seasonal fruits. Add to cart and get fast delivery within 2 hours.',
-  url: '/ordering',
-  image: '/og-image.jpg',
-  type: 'website',
-});
+import { useState } from 'react';
+import Link from 'next/link';
+import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { motion } from 'framer-motion';
+import { Toaster } from 'sonner';
+import ProductList from '@/components/ordering/product-list';
+import Cart from '@/components/ordering/cart';
+import GramInputModal from '@/components/ordering/gram-input-modal';
+import GlobalSummary from '@/components/ordering/global-summary';
+import { useCartStore } from '@/store/cart-store';
+import { Product } from '@/types';
+import { formatCurrency } from '@/lib/utils';
 
 export default function OrderingPage() {
-  const products = [
-    { name: 'Red Apples', price: '45,000đ/kg', emoji: '🍎' },
-    { name: 'Bananas', price: '25,000đ/kg', emoji: '🍌' },
-    { name: 'Oranges', price: '35,000đ/kg', emoji: '🍊' },
-    { name: 'Watermelon', price: '15,000đ/kg', emoji: '🍉' },
-    { name: 'Pineapple', price: '30,000đ/piece', emoji: '🍍' },
-    { name: 'Grapes', price: '80,000đ/kg', emoji: '🍇' },
-  ];
+  const { carts, openModal } = useCartStore();
+  const [activeProduct, setActiveProduct] = useState<Product | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 3,
+      },
+    })
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const activeData = active.data.current;
+    
+    if (activeData?.type === 'product') {
+      setActiveProduct(activeData.product as Product);
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    setActiveProduct(null);
+
+    if (!over) return;
+
+    const activeData = active.data.current;
+    const overData = over.data.current;
+
+    if (activeData?.type === 'product' && overData?.type === 'cart') {
+      const product = activeData.product as Product;
+      const cartId = overData.cartId as string;
+      openModal(cartId, product);
+    }
+  };
 
   return (
-    <>
-      <StructuredData
-        type="Store"
-        data={{
-          '@type': 'ItemList',
-          name: 'Fresh Fruits Collection',
-          description: 'Browse our selection of fresh fruits',
-          itemListElement: products.map((product, index) => ({
-            '@type': 'ListItem',
-            position: index + 1,
-            item: {
-              '@type': 'Product',
-              name: product.name,
-              offers: {
-                '@type': 'Offer',
-                price: product.price,
-                priceCurrency: 'VND',
-                availability: 'https://schema.org/InStock',
-              },
-            },
-          })),
-        }}
-      />
-    <div className="flex min-h-screen flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50">
+      <Toaster position="top-right" richColors />
+      
       {/* Header */}
-      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/80 backdrop-blur-sm shadow-sm">
         <div className="container mx-auto px-4 py-4">
           <nav className="flex items-center justify-between">
-            <Link
-              href="/landing"
-              className="text-2xl font-bold text-zinc-900 dark:text-zinc-100"
-            >
+            <Link href="/landing" className="text-2xl font-bold text-green-700 hover:text-green-800 transition-colors">
               🍎 Farm Fresh
             </Link>
             <Link
               href="/landing"
-              className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
             >
               Back to Home
             </Link>
@@ -68,55 +73,78 @@ export default function OrderingPage() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 bg-zinc-50 dark:bg-black">
-        <div className="container mx-auto px-4 py-16">
-          <div className="mx-auto max-w-4xl">
-            <h1 className="mb-8 text-4xl font-bold text-zinc-900 dark:text-zinc-100">
-              Order Fresh Fruits
-            </h1>
+      <DndContext 
+        sensors={sensors} 
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <main className="container mx-auto px-4 py-8">
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Order Fresh Fruits</h1>
+            <p className="text-gray-600">Drag fruits to your carts and specify the amount in grams</p>
+          </div>
 
-            {/* Product Grid */}
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {/* Sample Product Cards */}
-              {products.map((product, index) => (
-                <div
-                  key={index}
-                  className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
-                >
-                  <div className="mb-4 text-center text-5xl">{product.emoji}</div>
-                  <h3 className="mb-2 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-                    {product.name}
-                  </h3>
-                  <p className="mb-4 text-lg font-medium text-green-600 dark:text-green-400">
-                    {product.price}
-                  </p>
-                  <button className="w-full rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">
-                    Add to Cart
-                  </button>
-                </div>
-              ))}
+          <div className="grid gap-8 lg:grid-cols-3">
+            {/* Left Column - Product List */}
+            <div className="lg:col-span-2">
+              <ProductList />
             </div>
 
-            {/* Cart Summary Placeholder */}
-            <div className="mt-12 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-              <h2 className="mb-4 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-                Shopping Cart
-              </h2>
-              <p className="text-zinc-600 dark:text-zinc-400">
-                Your cart is empty. Add products to continue.
-              </p>
+            {/* Right Column - Global Summary */}
+            <div>
+              <GlobalSummary />
             </div>
           </div>
-        </div>
-      </main>
+
+          {/* Shopping Carts */}
+          <div className="mt-8">
+            <h2 className="mb-6 text-3xl font-bold text-gray-900">Your Shopping Carts</h2>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {carts.map((cart) => (
+                <Cart key={cart.id} cart={cart} />
+              ))}
+            </div>
+          </div>
+        </main>
+
+        {/* Drag Overlay - Smooth drag preview that follows cursor */}
+        <DragOverlay dropAnimation={null}>
+          {activeProduct ? (
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0.9, rotate: -2 }}
+              animate={{ scale: 1.05, opacity: 1, rotate: -3 }}
+              transition={{ 
+                type: 'spring',
+                stiffness: 300,
+                damping: 25,
+              }}
+              className="flex items-center gap-4 rounded-lg border-2 border-green-500 bg-white p-4 shadow-2xl cursor-grabbing"
+              style={{ 
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                transform: 'rotate(-3deg)',
+              }}
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-green-100 to-green-200 text-3xl">
+                {activeProduct.image}
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900">{activeProduct.name}</h3>
+                <p className="text-sm text-gray-600">{formatCurrency(activeProduct.pricePerKg)}/kg</p>
+              </div>
+            </motion.div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-200 bg-white py-8 dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="container mx-auto px-4 text-center text-sm text-zinc-600 dark:text-zinc-400">
+      <footer className="mt-16 border-t border-gray-200 bg-white py-8">
+        <div className="container mx-auto px-4 text-center text-sm text-gray-600">
           <p>&copy; 2024 Farm Fresh. All rights reserved.</p>
         </div>
       </footer>
+
+      {/* Modal */}
+      <GramInputModal />
     </div>
-    </>
   );
 }
