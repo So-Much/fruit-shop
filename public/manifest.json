@@ -1,0 +1,17 @@
+{
+  "name": "Farm Fresh - Pick Your Basket",
+  "short_name": "Farm Fresh",
+  "description": "Fresh fruits delivered to your door. Carefully selected from trusted farms, no preservatives.",
+  "start_url": "/landing",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#16a34a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}
