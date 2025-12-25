@@ -2,20 +2,20 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { motion } from 'framer-motion';
 import { Toaster } from 'sonner';
 import ProductList from '@/components/ordering/product-list';
-import Cart from '@/components/ordering/cart';
-import GramInputModal from '@/components/ordering/gram-input-modal';
-import GlobalSummary from '@/components/ordering/global-summary';
+import BasketsDropZone from '@/components/ordering/baskets-drop-zone';
+import OrderSummary from '@/components/ordering/order-summary';
+import QuickGramInput from '@/components/ordering/quick-gram-input';
 import { useCartStore } from '@/store/cart-store';
 import { Product } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 
 export default function OrderingPage() {
-  const { carts, openModal } = useCartStore();
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
+  const [isOverDropZone, setIsOverDropZone] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -34,20 +34,29 @@ export default function OrderingPage() {
     }
   };
 
+  const handleDragOver = (event: DragOverEvent) => {
+    const { over } = event;
+    const overData = over?.data.current;
+    setIsOverDropZone(overData?.type === 'drop-zone');
+  };
+
+  const { openModal } = useCartStore();
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
     setActiveProduct(null);
+    setIsOverDropZone(false);
 
     if (!over) return;
 
     const activeData = active.data.current;
     const overData = over.data.current;
 
-    if (activeData?.type === 'product' && overData?.type === 'cart') {
+    // Drop on baskets zone - open modal
+    if (activeData?.type === 'product' && overData?.type === 'drop-zone') {
       const product = activeData.product as Product;
-      const cartId = overData.cartId as string;
-      openModal(cartId, product);
+      openModal('', product); // cartId not needed for new flow
     }
   };
 
@@ -76,60 +85,80 @@ export default function OrderingPage() {
       <DndContext 
         sensors={sensors} 
         onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
         <main className="container mx-auto px-4 py-8">
           <div className="mb-8">
             <h1 className="text-4xl font-bold text-gray-900 mb-2">Order Fresh Fruits</h1>
-            <p className="text-gray-600">Drag fruits to your carts and specify the amount in grams</p>
+            <p className="text-gray-600">Drag fruits to the center, enter grams, and press Enter</p>
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-3">
-            {/* Left Column - Product List */}
-            <div className="lg:col-span-2">
+          {/* 3-Column Layout */}
+          <div className="grid gap-6 lg:grid-cols-12">
+            {/* LEFT COLUMN - Products (4 columns) */}
+            <div className="lg:col-span-4">
               <ProductList />
             </div>
 
-            {/* Right Column - Global Summary */}
-            <div>
-              <GlobalSummary />
+            {/* CENTER COLUMN - Baskets Drop Zone (5 columns) */}
+            <div className="lg:col-span-5">
+              <BasketsDropZone isOver={isOverDropZone} />
             </div>
-          </div>
 
-          {/* Shopping Carts */}
-          <div className="mt-8">
-            <h2 className="mb-6 text-3xl font-bold text-gray-900">Your Shopping Carts</h2>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {carts.map((cart) => (
-                <Cart key={cart.id} cart={cart} />
-              ))}
+            {/* RIGHT COLUMN - Summary (3 columns) */}
+            <div className="lg:col-span-3">
+              <OrderSummary />
             </div>
           </div>
         </main>
 
-        {/* Drag Overlay - Smooth drag preview that follows cursor */}
+        {/* Drag Overlay - Full screen overlay with large image */}
         <DragOverlay dropAnimation={null}>
           {activeProduct ? (
             <motion.div
-              initial={{ scale: 0.95, opacity: 0.9, rotate: -2 }}
-              animate={{ scale: 1.05, opacity: 1, rotate: -3 }}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
               transition={{ 
                 type: 'spring',
                 stiffness: 300,
                 damping: 25,
               }}
-              className="flex items-center gap-4 rounded-lg border-2 border-green-500 bg-white p-4 shadow-2xl cursor-grabbing"
-              style={{ 
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                transform: 'rotate(-3deg)',
-              }}
+              className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-green-100 to-green-200 text-3xl">
-                {activeProduct.image}
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900">{activeProduct.name}</h3>
-                <p className="text-sm text-gray-600">{formatCurrency(activeProduct.pricePerKg)}/kg</p>
+              {/* Semi-transparent backdrop */}
+              <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
+              
+              {/* Large fruit image in center */}
+              <div className="relative flex flex-col items-center justify-center">
+                <motion.div
+                  animate={{ 
+                    scale: [1, 1.1, 1],
+                    rotate: [0, -5, 5, 0]
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                  className="flex h-48 w-48 items-center justify-center rounded-3xl bg-gradient-to-br from-green-100 to-green-200 text-9xl shadow-2xl border-4 border-green-400"
+                  style={{ 
+                    boxShadow: '0 25px 50px -12px rgba(34, 197, 94, 0.5)',
+                  }}
+                >
+                  {activeProduct.image}
+                </motion.div>
+                
+                {/* Small description below */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="mt-4 rounded-xl bg-white/95 backdrop-blur-sm px-4 py-2 shadow-lg border border-green-200"
+                >
+                  <p className="text-sm font-semibold text-gray-900">{activeProduct.name}</p>
+                  <p className="text-xs text-gray-600">{formatCurrency(activeProduct.pricePerKg)}/kg</p>
+                </motion.div>
               </div>
             </motion.div>
           ) : null}
@@ -143,8 +172,8 @@ export default function OrderingPage() {
         </div>
       </footer>
 
-      {/* Modal */}
-      <GramInputModal />
+      {/* Quick Gram Input Modal */}
+      <QuickGramInput />
     </div>
   );
 }

@@ -32,7 +32,7 @@ export default function RootLayout({
         <StructuredData type="WebSite" />
         <ErrorBoundary>
           <LoadingOverlayProvider>
-            {children}
+        {children}
           </LoadingOverlayProvider>
         </ErrorBoundary>
       </body>

@@ -2,7 +2,6 @@
 
 import { useDraggable } from '@dnd-kit/core';
 import { motion } from 'framer-motion';
-import { GripVertical } from 'lucide-react';
 import { Product } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 
@@ -25,7 +24,7 @@ export default function DraggableProduct({ product }: DraggableProductProps) {
       {...attributes}
       {...listeners}
       className={`
-        group relative flex items-center gap-4 rounded-lg border-2 border-gray-200 bg-white p-4 shadow-sm
+        group relative flex flex-col items-center rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm
         transition-all duration-200 hover:border-green-400 hover:shadow-md cursor-grab active:cursor-grabbing
         touch-none
         ${isDragging ? 'opacity-20 scale-95' : ''}
@@ -34,20 +33,15 @@ export default function DraggableProduct({ product }: DraggableProductProps) {
       whileTap={{ scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
-      {/* Drag Handle Icon (Visual only, drag works on entire card) */}
-      <div className="flex cursor-grab items-center justify-center text-gray-400 transition-colors group-hover:text-green-600 pointer-events-none">
-        <GripVertical className="h-5 w-5" />
-      </div>
-
-      {/* Product Emoji/Image */}
-      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-green-50 to-green-100 text-3xl">
+      {/* Product Image - Main Focus */}
+      <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-gradient-to-br from-green-50 to-green-100 text-6xl mb-3">
         {product.image}
       </div>
 
-      {/* Product Info */}
-      <div className="flex-1">
-        <h3 className="font-semibold text-gray-900">{product.name}</h3>
-        <p className="text-sm text-gray-600">{formatCurrency(product.pricePerKg)}/kg</p>
+      {/* Product Info - Small Description */}
+      <div className="w-full text-center">
+        <h3 className="text-sm font-semibold text-gray-900 mb-1">{product.name}</h3>
+        <p className="text-xs text-gray-600">{formatCurrency(product.pricePerKg)}/kg</p>
       </div>
     </motion.div>
   );
